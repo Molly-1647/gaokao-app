@@ -21,7 +21,7 @@ data/
 
 # Node
 frontend/node_modules/
-frontend/dist/
+# frontend/dist/ 需要包含在构建上下文中（预构建产物）
 
 # 交互原型（不需要入镜像）
 交互原型/

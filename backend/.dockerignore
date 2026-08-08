@@ -25,7 +25,7 @@ dist/
 
 # 本地数据（避免打包到镜像里）
 instance/
-chroma_db/
+# chroma_db/ 需要包含在构建上下文中（预导入的向量库）
 *.db
 *.sqlite3
 data/
