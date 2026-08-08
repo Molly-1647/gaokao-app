@@ -1,25 +1,9 @@
 # ============================================================
-# 全栈一体化 Dockerfile（免费云平台专用）
-# Stage 1: Node.js 构建前端
-# Stage 2: Python 后端 + 前端静态文件 + Chroma向量库
-# 最终镜像只有一个服务: Flask 托管前端 + 提供API
+# 全栈一体化 Dockerfile（免费云平台专用 - 简化版）
+# 前端已在本地构建为 dist/，Docker 直接复制，无需 Node.js
+# 后端: Flask + Gunicorn + Chroma向量库
 # ============================================================
 
-# ========== Stage 1: 构建前端 ==========
-FROM node:18-alpine AS frontend-build
-
-WORKDIR /build
-
-# 复制前端依赖清单（利用缓存层）
-COPY frontend/package*.json ./
-RUN npm config set registry https://registry.npmmirror.com && \
-    npm install --no-audit --no-fund
-
-# 复制前端源码并构建
-COPY frontend/ ./
-RUN npm run build
-
-# ========== Stage 2: 后端 + 前端静态文件 ==========
 FROM python:3.11-slim-bullseye
 
 LABEL maintainer="gaokao-app"
@@ -42,6 +26,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# 创建必要目录
+RUN mkdir -p instance chroma_db static
+
 # 安装Python依赖
 COPY backend/requirements.txt /app/
 RUN pip install --no-cache-dir --upgrade pip && \
@@ -51,14 +38,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # 复制后端源码
 COPY backend/ /app/
 
-# 复制前端构建产物到 static 目录（Flask托管）
-COPY --from=frontend-build /build/dist/ /app/static/
+# 复制前端预构建产物（已在本地 npm run build）
+COPY frontend/dist/ /app/static/
 
-# 复制Chroma向量库（已导入2549个知识块，29MB）
+# 复制Chroma向量库（已导入2549个知识块）
 COPY backend/chroma_db/ /app/chroma_db/
-
-# 复制知识库源文件（供首次导入用）
-COPY 高考志愿填报数据库/ /app/高考志愿填报数据库/
 
 # 暴露端口（Render会通过PORT环境变量指定）
 EXPOSE 5000

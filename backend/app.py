@@ -564,6 +564,7 @@ def _ensure_user_profile(data, create=True):
     if not profile and create:
         profile = UserProfile()
         db.session.add(profile)
+        db.session.commit()  # 确保获取 profile.id
 
     if profile:
         profile.province_id = province.id if province else profile.province_id
@@ -605,11 +606,19 @@ def _get_school_list(province_name):
 def _fallback_schools_from_json(province_name):
     """兜底：从前端的 JSON 静态数据里拿（初始化前可用）"""
     try:
-        js_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            '..', 'frontend', 'public', 'gaokao-db.js'
-        )
-        if not os.path.exists(js_path):
+        # 优先读取打包后的 static 目录（生产环境/Docker），其次读开发路径
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        candidates = [
+            os.path.join(base_dir, 'static', 'gaokao-db.js'),
+            os.path.join(base_dir, '..', 'frontend', 'dist', 'gaokao-db.js'),
+            os.path.join(base_dir, '..', 'frontend', 'public', 'gaokao-db.js'),
+        ]
+        js_path = None
+        for p in candidates:
+            if os.path.exists(p):
+                js_path = p
+                break
+        if not js_path:
             return []
         with open(js_path, 'r', encoding='utf-8') as f:
             content = f.read()

@@ -35,7 +35,7 @@ Thumbs.db
 
 # Node
 frontend/node_modules/
-frontend/dist/
+# frontend/dist/ 已构建产物，需要提交到Git供Docker直接使用
 
 # 临时文件
 *.tmp
