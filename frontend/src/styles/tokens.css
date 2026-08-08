@@ -1,0 +1,42 @@
+/* ============================================================
+   设计令牌（huashu-design）：破晓金橙 + 晨曦天蓝
+   事实来源：原型中 const C = {...}。此处原样移植为 CSS 变量，
+   供 CSS 使用；同时 src/design/tokens.js 暴露 JS 令牌对象供内联样式。
+   ============================================================ */
+:root {
+  /* 破晓金橙 */
+  --sun-deep: #F4722B;
+  --sun: #FF8A3D;
+  --gold: #FFB23E;
+  --rose: #FF6B6B;
+  --amber: #FFA53E;
+
+  /* 晨曦天蓝 */
+  --sky: #3E95ED;
+  --sky-lt: #8FC7FF;
+
+  /* 奶油底 */
+  --cream: #FFF6EC;
+  --cream2: #FFFDF9;
+
+  /* 文字 */
+  --ink: #2B2926;
+  --sub: #6b655c;
+  --muted: #A89E8F;
+
+  /* 表面与分隔 */
+  --card: #FFFFFF;
+  --line: rgba(43, 41, 38, 0.08);
+
+  /* 语义色 */
+  --green: #2FBF71;
+
+  /* 渐变 */
+  --sun-grad: linear-gradient(135deg, #FFC15A 0%, #FF8A3D 48%, #F4722B 100%);
+  --sky-grad: linear-gradient(135deg, #6FB6F7 0%, #3E95ED 100%);
+  --soft-grad: linear-gradient(180deg, #FFF6EC 0%, #FFFDF9 45%);
+
+  /* 字体 */
+  --font-sans: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-serif: 'Noto Serif SC', serif;
+}

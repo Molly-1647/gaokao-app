@@ -1,0 +1,40 @@
+# Git
+.git
+.gitignore
+README*.md
+
+# Node 依赖（构建时会重新装）
+node_modules/
+
+# 构建产物（构建阶段会重新生成）
+dist/
+build/
+
+# npm 缓存
+.npm
+.cache/
+
+# 环境配置文件（用镜像里的默认值）
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 临时文件
+*.log
+logs/
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 本地原型和文档（打包到镜像没必要）
+*.html
+docs/
+public/*.md

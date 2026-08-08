@@ -1,0 +1,23 @@
+{
+  "name": "gaokao-zhiyuan-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "高考志愿填报 APP 前端（Vite + React 18）— 破晓金橙 + 晨曦天蓝",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^4.5.5",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.11"
+  }
+}

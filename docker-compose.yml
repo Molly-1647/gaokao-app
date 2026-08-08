@@ -1,0 +1,106 @@
+# ============================================================
+# 高考志愿填报APP - Docker Compose 一键编排
+# 包含: 前端(Nginx) + 后端(Gunicorn + Flask)
+# 用法: docker compose up -d
+# ============================================================
+
+version: '3.8'
+
+# ============================
+# 服务定义
+# ============================
+services:
+
+  # ----------------------------
+  # 后端服务: Flask + Gunicorn
+  # ----------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gaokao-backend
+    restart: unless-stopped
+    environment:
+      # Flask环境
+      - FLASK_ENV=production
+      - FLASK_CONFIG=production
+      # RAG模式: 强制TF-IDF（无需下载模型）
+      - FORCE_TFIDF=1
+      # 时区
+      - TZ=Asia/Shanghai
+    volumes:
+      # 持久化数据挂载到宿主机
+      - ./data/backend/instance:/app/instance       # SQLite数据库
+      - ./data/backend/chroma_db:/app/chroma_db     # Chroma向量库
+      - ./data/backend/logs:/var/log                # 日志目录
+      # 挂载知识库（和宿主机同步更新）
+      - ./高考志愿填报数据库:/app/高考志愿填报数据库:ro
+    networks:
+      - gaokao-net
+    # 资源限制（根据服务器配置调整）
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 512M
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ----------------------------
+  # 前端服务: Nginx + 静态文件 + API代理
+  # ----------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: gaokao-frontend
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      # 挂载前端日志
+      - ./data/frontend/logs:/var/log/nginx
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      # 对外暴露端口: 宿主机端口 -> 容器80端口
+      # 如果有外部Nginx做反向代理，可改为只暴露给内网
+      - "80:80"
+    networks:
+      - gaokao-net
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ============================
+# 网络配置
+# ============================
+networks:
+  gaokao-net:
+    driver: bridge
+    name: gaokao-net
+
+# ============================
+# 数据卷（可选，已用宿主机挂载替代）
+# ============================
+# volumes:
+#   backend-data:
+#   chroma-data:

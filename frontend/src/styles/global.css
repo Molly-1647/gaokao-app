@@ -1,0 +1,42 @@
+@import './tokens.css';
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  /* 与原型 body 背景一致 */
+  background: radial-gradient(1200px 600px at 50% -10%, #FFE7C7 0%, #ECE4D8 55%, #E3DACB 100%);
+  min-height: 100vh;
+  color: var(--ink);
+}
+
+/* 居中布局：干净居中的手机外壳（去掉原型的 stage-note） */
+#root {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+::-webkit-scrollbar { width: 0; height: 0; }
+
+.tap { cursor: pointer; transition: transform .15s ease, box-shadow .2s ease; }
+.tap:active { transform: scale(.97); }
+
+/* ===== 关键帧（与原型一致） ===== */
+@keyframes screenIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.screen-enter { animation: screenIn .42s cubic-bezier(.22, .61, .36, 1) both; }
+
+@keyframes sunSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes sunPulse { 0%, 100% { transform: scale(1); opacity: .95; } 50% { transform: scale(1.06); opacity: 1; } }
+@keyframes floatUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+.float-up { animation: floatUp .6s ease both; }
+
+.sun-rays { transform-origin: center; animation: sunSpin 26s linear infinite; }
+.sun-core { transform-origin: center; animation: sunPulse 4s ease-in-out infinite; }
+
+input, select, textarea { font-family: inherit; outline: none; }
+input:focus, select:focus { border-color: var(--sun); }

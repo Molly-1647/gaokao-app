@@ -1,0 +1,27 @@
+# ============================================================
+# Render 平台配置文件
+# 部署时 Render 会自动读取此文件
+# 文档: https://render.com/docs/blueprint-spec
+# ============================================================
+
+services:
+  - type: web
+    name: gaokao-volunteer-app
+    runtime: docker
+    plan: free
+    region: singapore  # 新加坡节点（国内访问最快）
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_CONFIG
+        value: production
+      - key: FORCE_TFIDF
+        value: "1"
+      - key: TZ
+        value: Asia/Shanghai
+      - key: SECRET_KEY
+        generateValue: true  # Render自动生成随机密钥

@@ -1,0 +1,51 @@
+# Git
+.git
+.gitignore
+README*.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+*.egg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 本地数据（避免打包到镜像里）
+instance/
+chroma_db/
+*.db
+*.sqlite3
+data/
+
+# 临时文件
+*.log
+logs/
+*.tmp
+.cache/
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 启动脚本（仅本地开发用）
+start_server.ps1
+start_server.bat
+
+# 不需要入镜像的大文件（如果本地有）
+models/
+.venv/
+node_modules/
