@@ -1,19 +1,17 @@
 # ============================================================
-# Render 平台配置文件
-# 部署时 Render 会自动读取此文件
-# 文档: https://render.com/docs/blueprint-spec
+# Render 平台配置 - 原生Python运行时（无需Docker）
+# 部署更简单、内存占用更低、成功率更高
 # ============================================================
 
 services:
   - type: web
-    name: gaokao-volunteer-app
-    runtime: docker
+    name: gaokao-app
+    runtime: python
     plan: free
-    region: singapore  # 新加坡节点（国内访问最快）
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
-    healthCheckPath: /api/health
-    autoDeploy: true
+    region: singapore
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:create_app('production') --workers 1 --bind 0.0.0.0:$PORT --timeout 60
     envVars:
       - key: FLASK_ENV
         value: production
@@ -24,4 +22,4 @@ services:
       - key: TZ
         value: Asia/Shanghai
       - key: SECRET_KEY
-        generateValue: true  # Render自动生成随机密钥
+        generateValue: true

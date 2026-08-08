@@ -25,16 +25,16 @@ from models import (
 )
 
 # ============================================================
-# RAG 引擎初始化（方案一：文件级RAG轻量方案）
+# RAG 引擎初始化（轻量版：纯TF-IDF，无需chromadb/sentence-transformers）
 # ============================================================
 RAG_AVAILABLE = False
 rag_engine = None
 
 try:
-    from chroma_rag import ChromaRAG
+    from simple_rag import init_rag as _init_rag
     RAG_AVAILABLE = True
 except Exception as e:
-    print(f"[RAG] chroma_rag 模块导入失败: {e}，RAG功能将使用模拟数据")
+    print(f"[RAG] simple_rag 模块导入失败: {e}")
 
 
 def init_rag(persist_dir=None):
@@ -43,15 +43,18 @@ def init_rag(persist_dir=None):
     if not RAG_AVAILABLE:
         return False
     try:
-        if persist_dir is None:
-            persist_dir = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), 'chroma_db'
-            )
-        rag_engine = ChromaRAG(persist_dir=persist_dir)
-        print(f"[RAG] 引擎初始化成功，向量库目录: {persist_dir}")
-        return True
+        data_dir = os.path.dirname(os.path.abspath(__file__))
+        rag_engine = _init_rag(data_dir=data_dir)
+        if rag_engine._loaded:
+            print(f"[RAG] 轻量引擎初始化成功，文档块: {len(rag_engine.chunks)}")
+            return True
+        else:
+            print("[RAG] 文档数据未加载，RAG功能不可用")
+            return False
     except Exception as e:
         print(f"[RAG] 引擎初始化失败: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
@@ -164,7 +167,7 @@ def register_routes(app):
 
         if RAG_AVAILABLE and rag_engine:
             info['rag'] = "ok"
-            info['rag_mode'] = "bge-m3" if (not getattr(rag_engine, 'use_tfidf', False) and rag_engine._model_loaded) else "tfidf"
+            info['rag_mode'] = "tfidf"
 
         return jsonify(info), 200
 
@@ -448,7 +451,7 @@ def register_routes(app):
             try:
                 hits = rag_engine.search(query, n_results=top_k)
                 if hits:
-                    mode = "tfidf" if getattr(rag_engine, 'use_tfidf', False) else "bge-m3"
+                    mode = "tfidf"
                     results = [{
                         "id": h.get('id', i),
                         "content": h.get('content', ''),

@@ -18,6 +18,9 @@ ENV/
 backend/instance/*.db
 backend/instance/*.sqlite3
 
+# ChromaDB（已导出为rag_data.json，不再需要）
+backend/chroma_db/
+
 # 日志
 *.log
 logs/
