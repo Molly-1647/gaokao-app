@@ -1,32 +1,53 @@
 #!/usr/bin/env python3
 """
-轻量版RAG引擎 - 纯TF-IDF实现（无需chromadb和sentence-transformers）
-依赖：scikit-learn, numpy
+极简版RAG引擎 - 纯Python实现（零第三方依赖）
+使用字符级N-gram + 词频匹配 + 关键词命中
+适用于Python 3.8+，无需numpy/scikit-learn
 """
 import os
 import json
-import pickle
-import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+import re
+import math
+from collections import Counter
 
 
 class SimpleRAG:
-    """纯TF-IDF RAG引擎（轻量、快速、稳定）"""
+    """纯Python实现的轻量RAG检索引擎"""
 
     def __init__(self, data_dir=None):
         self.data_dir = data_dir or os.path.dirname(os.path.abspath(__file__))
         self.chunks = []
-        self.vectorizer = None
-        self.doc_matrix = None
         self._loaded = False
+        self._index = {}  # token -> {chunk_id: count}
+        self._doc_freq = Counter()  # token -> 多少文档包含它
+        self._chunk_lens = {}  # chunk_id -> 文档长度(token数)
+        self._avg_doc_len = 0.0
+        self._token_re = re.compile(r'[\u4e00-\u9fa5a-zA-Z0-9]+')
 
         self._load_data()
 
+    def _tokenize(self, text):
+        """分词：按中英文提取，再生成字符级bigram"""
+        tokens = []
+        for m in self._token_re.findall(text.lower()):
+            # 英文直接加入
+            if re.match(r'^[a-zA-Z0-9]+$', m):
+                if len(m) >= 2:
+                    tokens.append(m)
+                if len(m) >= 4:
+                    tokens.append(m[:4])  # 前缀
+            # 中文生成bigram
+            else:
+                if len(m) >= 1:
+                    tokens.extend(m)  # 单字
+                if len(m) >= 2:
+                    for i in range(len(m) - 1):
+                        tokens.append(m[i:i+2])  # 双字
+        return tokens
+
     def _load_data(self):
-        """加载文档数据和TF-IDF向量化器"""
         data_file = os.path.join(self.data_dir, 'rag_data.json')
-        vectorizer_file = os.path.join(self.data_dir, 'tfidf_vectorizer.pkl')
+        vectorizer_info = os.path.join(self.data_dir, 'rag_index.json')
 
         # 加载文档
         if os.path.exists(data_file):
@@ -34,67 +55,110 @@ class SimpleRAG:
                 data = json.load(f)
             self.chunks = data.get('chunks', [])
             print(f"[RAG] 加载文档块: {len(self.chunks)} 个")
+        else:
+            print("[RAG] 未找到rag_data.json，RAG功能不可用")
+            return
 
-        # 加载或创建向量化器
-        if os.path.exists(vectorizer_file) and self.chunks:
-            with open(vectorizer_file, 'rb') as f:
-                self.vectorizer = pickle.load(f)
-            print("[RAG] 加载已有TF-IDF向量化器")
-        elif self.chunks:
-            # 重新训练
-            self._train_vectorizer()
+        # 构建或加载索引
+        if os.path.exists(vectorizer_info) and self.chunks:
+            try:
+                with open(vectorizer_info, 'r', encoding='utf-8') as f:
+                    idx_data = json.load(f)
+                self._doc_freq = Counter(idx_data['doc_freq'])
+                self._chunk_lens = {int(k): v for k, v in idx_data['chunk_lens'].items()}
+                self._avg_doc_len = idx_data['avg_doc_len']
+                print("[RAG] 加载已有检索索引")
+                self._loaded = True
+                return
+            except:
+                pass
 
-        # 构建文档矩阵
-        if self.vectorizer and self.chunks:
-            documents = [c['content'] for c in self.chunks]
-            self.doc_matrix = self.vectorizer.transform(documents)
-            self._loaded = True
-            print(f"[RAG] 文档矩阵构建完成: {self.doc_matrix.shape}")
+        # 构建索引
+        self._build_index()
 
-    def _train_vectorizer(self):
-        """训练TF-IDF向量化器"""
-        documents = [c['content'] for c in self.chunks]
-        print(f"[RAG] 训练TF-IDF向量化器（{len(documents)}个文档）...")
+        # 保存索引
+        try:
+            with open(vectorizer_info, 'w', encoding='utf-8') as f:
+                json.dump({
+                    'doc_freq': dict(self._doc_freq),
+                    'chunk_lens': self._chunk_lens,
+                    'avg_doc_len': self._avg_doc_len,
+                }, f, ensure_ascii=False)
+            print("[RAG] 检索索引已保存")
+        except:
+            pass
 
-        self.vectorizer = TfidfVectorizer(
-            max_features=2048,
-            analyzer='char_wb',
-            ngram_range=(2, 4),
-            min_df=1,
-            max_df=0.95
-        )
-        self.doc_matrix = self.vectorizer.fit_transform(documents)
+        self._loaded = True
+        print(f"[RAG] 索引构建完成，词汇量: {len(self._doc_freq)}")
 
-        # 保存
-        vectorizer_file = os.path.join(self.data_dir, 'tfidf_vectorizer.pkl')
-        with open(vectorizer_file, 'wb') as f:
-            pickle.dump(self.vectorizer, f)
+    def _build_index(self):
+        N = len(self.chunks)
+        total_len = 0
 
-        print(f"[RAG] 向量化器训练完成，词汇表大小: {len(self.vectorizer.vocabulary_)}")
+        for chunk_id, chunk in enumerate(self.chunks):
+            tokens = self._tokenize(chunk['content'])
+            counts = Counter(tokens)
+            self._chunk_lens[chunk_id] = len(tokens)
+            total_len += len(tokens)
+
+            for tok, cnt in counts.items():
+                if tok not in self._index:
+                    self._index[tok] = {}
+                self._index[tok][chunk_id] = cnt
+                self._doc_freq[tok] += 1
+
+        if N > 0:
+            self._avg_doc_len = total_len / N
 
     def search(self, query, n_results=5):
-        """检索最相关的n_results个文档块"""
-        if not self._loaded:
+        """BM25-like 检索"""
+        if not self._loaded or not self.chunks:
             return []
 
-        # 转换查询为向量
-        query_vector = self.vectorizer.transform([query])
+        query_tokens = self._tokenize(query)
+        if not query_tokens:
+            return []
 
-        # 计算余弦相似度
-        similarities = cosine_similarity(query_vector, self.doc_matrix).flatten()
+        N = len(self.chunks)
+        scores = {}
 
-        # 取top N
-        top_indices = similarities.argsort()[::-1][:n_results]
+        k1 = 1.5
+        b = 0.75
+
+        for tok in query_tokens:
+            if tok not in self._index:
+                continue
+            doc_freq = self._doc_freq[tok]
+            if doc_freq == 0:
+                continue
+            idf = math.log((N - doc_freq + 0.5) / (doc_freq + 0.5) + 1.0)
+
+            for chunk_id, f in self._index[tok].items():
+                dl = self._chunk_lens.get(chunk_id, 1)
+                denom = f + k1 * (1 - b + b * dl / max(self._avg_doc_len, 1))
+                if denom <= 0:
+                    denom = 1
+                score_contrib = idf * (f * (k1 + 1)) / denom
+                scores[chunk_id] = scores.get(chunk_id, 0.0) + score_contrib
+
+        if not scores:
+            return []
+
+        # 排序取top
+        top_ids = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:n_results]
+
+        # 归一化分数
+        max_score = max(s for _, s in top_ids) or 1.0
 
         results = []
-        for idx in top_indices:
-            score = float(similarities[idx])
-            if score > 0.01:  # 过滤掉完全不相关的
-                chunk = self.chunks[idx]
+        for chunk_id, score in top_ids:
+            chunk = self.chunks[chunk_id]
+            norm_score = round(score / max_score, 4)
+            if norm_score >= 0.05:
                 results.append({
                     "content": chunk['content'],
                     "metadata": chunk.get('metadata', {}),
-                    "score": round(score, 4),
+                    "score": norm_score,
                     "source": chunk.get('metadata', {}).get('source_file', ''),
                 })
 
@@ -106,7 +170,6 @@ _rag_instance = None
 
 
 def init_rag(data_dir=None):
-    """初始化全局RAG引擎"""
     global _rag_instance
     if data_dir is None:
         data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)))
@@ -115,5 +178,4 @@ def init_rag(data_dir=None):
 
 
 def get_rag():
-    """获取全局RAG引擎"""
     return _rag_instance
